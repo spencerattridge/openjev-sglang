@@ -61,7 +61,10 @@ image = (
     target_concurrency=8,
     # Optimize for occasional use: accept a cold start instead of paying for
     # five idle B200 minutes after every request.
-    scaledown_window=2,
+    # Modal permits two seconds, but that can race the tail of a web request
+    # and churn into another expensive cold start. One minute is Modal's
+    # default and still bounds idle B200 spend to roughly $0.13 per burst.
+    scaledown_window=60,
     startup_timeout=1200,
     exit_grace_period=30,
 )

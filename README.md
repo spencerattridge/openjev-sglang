@@ -21,14 +21,15 @@ uv run modal setup
 # Start a temporary Server, run actual inference checks, then shut it down:
 uv run modal run modal_app.py
 
-# Deploy a stable public endpoint:
+# Deploy a stable, proxy-authenticated endpoint:
 uv run modal deploy modal_app.py
 ```
 
 The deployment prints a `https://...us-west.modal.direct` URL. It uses a
-[Modal Server](https://modal.com/docs/guide/servers), `unauthenticated=True`,
+[Modal Server](https://modal.com/docs/guide/servers), Modal Proxy Token authentication,
 `routing_region="us-west"`, and `compute_region=["us-west", "us-central", "us"]`.
-Autoscaling has no explicit container cap and scales to zero after five idle minutes.
+Autoscaling is capped at one container and scales to zero after two idle seconds.
+Unauthorized requests are rejected by Modal before they can wake a GPU container.
 Set `min_containers=1` in `modal_app.py` to keep a B200 warm.
 If SGLang exits unexpectedly, the API exits too. The Modal launcher watches the
 API and exits the container so Modal can replace it, rather than leaving a live
@@ -44,10 +45,13 @@ weights and compiles/captures kernels. Model weights persist in the
 compilation cache. Later starts reuse these files; CUDA graph capture still runs
 at startup. The Rust frontend receives an explicit local tokenizer directory to
 avoid remote-name lookup issues with revision-pinned snapshots.
-A scaled-to-zero Server returns **503** while it
-starts; the included smoke command retries startup responses.
+A scaled-to-zero Server returns **503** while it starts; the included smoke command
+retries startup responses. Create a workspace Proxy Token, then expose its combined
+`wk-....ws-...` value to the client without committing it:
 
 ```sh
+uv run modal workspace proxy-tokens create
+export MODAL_PROXY_TOKEN="wk-....ws-..."
 uv run openjev smoke https://YOUR-SERVER.us-west.modal.direct
 ```
 
@@ -59,6 +63,7 @@ latency, and cache usage. `modal run` saves this report as `smoke-result.json`.
 
 ```sh
 curl "$OPENJEV_URL/v1/systemone" \
+  -H "Authorization: Bearer $MODAL_PROXY_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "jev-latest",
@@ -192,8 +197,8 @@ All settings can be provided as `OPENJEV_*` environment variables; see
 
 The Modal launch script forwards `OPENJEV_PROFILE`, `OPENJEV_FRONTEND`, and
 `OPENJEV_SERVED_MODEL_NAME` from the local environment. To customize other remote settings,
-add them to `image.env(...)` or
-use a Modal Secret for keys. The default Modal endpoint intentionally has no auth.
+add them to `image.env(...)` or use a Modal Secret for keys. The Modal deployment requires
+proxy authentication by default so unauthorized requests cannot wake a billable container.
 
 OpenJev defines
 `confidence = 1 - H(probabilities) / log(number_of_options)`, clamped to [0, 1].

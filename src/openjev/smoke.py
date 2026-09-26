@@ -6,11 +6,29 @@ import time
 import httpx
 
 
+def request_headers() -> dict[str, str]:
+    """Build headers for Modal proxy auth and optional OpenJev auth."""
+    headers = {"Modal-Session-ID": "openjev-smoke"}
+    proxy_key = os.environ.get("MODAL_PROXY_TOKEN_ID")
+    proxy_secret = os.environ.get("MODAL_PROXY_TOKEN_SECRET")
+    if proxy_key and proxy_secret:
+        headers["Modal-Key"] = proxy_key
+        headers["Modal-Secret"] = proxy_secret
+    elif proxy_token := os.environ.get("MODAL_PROXY_TOKEN"):
+        headers["Authorization"] = f"Bearer {proxy_token}"
+    if key := os.environ.get("OPENJEV_API_KEY"):
+        if "Authorization" in headers:
+            raise ValueError(
+                "Use MODAL_PROXY_TOKEN_ID and MODAL_PROXY_TOKEN_SECRET when "
+                "OPENJEV_API_KEY is also set"
+            )
+        headers["Authorization"] = f"Bearer {key}"
+    return headers
+
+
 async def smoke_test(url: str, timeout: float = 1200) -> dict:
     """Exercise real inference; no mock fallback or fabricated probabilities."""
-    headers = {"Modal-Session-ID": "openjev-smoke"}
-    if key := os.environ.get("OPENJEV_API_KEY"):
-        headers["Authorization"] = f"Bearer {key}"
+    headers = request_headers()
     deadline = time.monotonic() + timeout
     waiting_started = time.monotonic()
     async with httpx.AsyncClient(base_url=url.rstrip("/"), headers=headers, timeout=120) as client:

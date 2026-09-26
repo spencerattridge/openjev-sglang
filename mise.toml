@@ -1,0 +1,36 @@
+[tools]
+gh = "2.101.0"
+python = "3.12.14"
+uv = "0.12.19"
+
+[tasks.setup]
+description = "Install the locked local dependencies"
+run = "uv sync --frozen"
+
+[tasks.lint]
+description = "Run Ruff"
+run = "uv run ruff check ."
+
+[tasks.test]
+description = "Run offline tests (no GPU)"
+run = "uv run pytest"
+
+[tasks.check]
+description = "Run all local checks"
+depends = ["lint", "test"]
+
+[tasks.deploy]
+description = "Deploy the protected scale-to-zero Modal endpoint"
+run = "uv run modal deploy modal_app.py"
+
+[tasks.smoke]
+description = "Start an ephemeral B200, run inference checks, then stop it"
+run = "uv run modal run modal_app.py"
+
+[tasks.logs]
+description = "Show recent Modal app logs"
+run = "uv run modal app logs openjev-sglang"
+
+[tasks.stop]
+description = "Permanently stop the deployed Modal app"
+run = "uv run modal app stop openjev-sglang"

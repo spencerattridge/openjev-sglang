@@ -53,10 +53,15 @@ image = (
     port=8000,
     routing_region="us-west",
     compute_region=["us-west", "us-central", "us"],
-    unauthenticated=True,
+    # Proxy authentication rejects unauthorized traffic before it can wake a
+    # billable GPU container. Create a Modal Proxy Token for HTTP clients.
+    unauthenticated=False,
     min_containers=0,
+    max_containers=1,
     target_concurrency=8,
-    scaledown_window=300,
+    # Optimize for occasional use: accept a cold start instead of paying for
+    # five idle B200 minutes after every request.
+    scaledown_window=2,
     startup_timeout=1200,
     exit_grace_period=30,
 )

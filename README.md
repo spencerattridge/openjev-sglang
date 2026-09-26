@@ -28,7 +28,7 @@ uv run modal deploy modal_app.py
 The deployment prints a `https://...us-west.modal.direct` URL. It uses a
 [Modal Server](https://modal.com/docs/guide/servers), Modal Proxy Token authentication,
 `routing_region="us-west"`, and `compute_region=["us-west", "us-central", "us"]`.
-Autoscaling is capped at one container and scales to zero after two idle seconds.
+Autoscaling is capped at one container and scales to zero after at most one idle minute.
 Unauthorized requests are rejected by Modal before they can wake a GPU container.
 Set `min_containers=1` in `modal_app.py` to keep a B200 warm.
 If SGLang exits unexpectedly, the API exits too. The Modal launcher watches the
